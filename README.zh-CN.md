@@ -42,6 +42,7 @@
 
 ## 研究与实验
 
+- [可跨平台的数据栈存储](research/portable-data-stack-storage.zh-CN.md) — Windows／Linux／macOS 的地址预留和页面归还，以及无 MMU 嵌入式的有界／分块存储方案。[English](research/portable-data-stack-storage.md)
 - [Goose 式数据栈与 GC 回退路径](research/goose-hybrid-gc.zh-CN.md) — 场景覆盖与已有实测、自动选择存储、跨内存引用、回收粒度，以及性能契约的边界。[English](research/goose-hybrid-gc.md)
 - [如何处理区域内部的独立对象寿命](research/region-reclamation-designs.zh-CN.md) — 可回收容器、声明式生命周期关系、延迟删除阶段，以及安全回收与任意图自动收集的边界。[English](research/region-reclamation-designs.md)
 - [Goose 的内存模型还能推进多远？](research/beyond-goose.zh-CN.md) — 探索自动区域、可验证的删除句柄、整块转移与有界不可变共享，并明确代价和验证目标。[English](research/beyond-goose.md)
