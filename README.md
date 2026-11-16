@@ -42,6 +42,7 @@ We are especially interested in program correctness, memory safety and efficienc
 
 ## Research and Experiments
 
+- [LLGo embedded targets and virtual-memory capabilities](research/llgo-embedded-memory.md) — MCU families, limited ESP/RP2350 mapping, K210 and Cortex-A57 exceptions, and what software can supply without an MMU. [中文](research/llgo-embedded-memory.zh-CN.md)
 - [Portable storage for growing data stacks](research/portable-data-stack-storage.md) — Virtual address reservation, page reclamation on Windows/Linux/macOS, and bounded or segmented storage for embedded targets without an MMU. [中文](research/portable-data-stack-storage.zh-CN.md)
 - [Goose-style data stacks with a GC fallback](research/goose-hybrid-gc.md) — Workload coverage and measured precedents, automatic placement, cross-memory references, collection granularity, and performance-contract boundaries. [中文](research/goose-hybrid-gc.zh-CN.md)
 - [Designs for independent lifetimes inside regions](research/region-reclamation-designs.md) — Reclaimable stores, declarative lifetime relationships, deferred deletion phases, and the boundary between safe reclamation and automatic graph collection. [中文](research/region-reclamation-designs.zh-CN.md)
