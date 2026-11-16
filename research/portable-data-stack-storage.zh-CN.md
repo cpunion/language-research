@@ -22,6 +22,23 @@
 
 Goose 已经使用上述三种路径。`os.trim_memory()` 归还尾部不用的完整页面，普通作用域回退则保留页面。源码明确说明，这样便于临时工作区复用，避免反复释放和重新取得页面。另外，切片池的 trim 可以回收被空闲范围元数据明确记录的完整页面，包括栈顶以下的空闲范围；两者都不会自动发现死对象。[栈 trim](https://github.com/aardappel/goose/blob/32a4f445d8a94b22874a28469f95f69ba3ac31dd/src/runtime/runtime_impl.h#L685) · [切片池 trim](https://github.com/aardappel/goose/blob/32a4f445d8a94b22874a28469f95f69ba3ac31dd/src/runtime/runtime_os.h#L1264)
 
+## Go goroutine 栈与预留地址栈
+
+于 2026-11-16 核对标准 Go 运行时源码。栈容量不是每次增加一个 OS 页面：`stackMin` 为 2 KiB，`fixedStack` 加上平台开销后向上取二次幂，Windows 为 8 KiB；`newstack` 通常将容量翻倍，大栈帧可能要求连续翻倍。自适应机制也可以让新 goroutine 从更大的栈起步。小栈来自运行时池，栈容量、运行时分配 span 和 OS 页面是不同单位。[Go 栈实现](https://go.dev/src/runtime/stack.go)
+
+预留地址的替代方案可以在预留区高端放置初始栈，向低地址增长时，映射／提交后续页面。在预留范围内可以保持地址稳定，避免复制栈和修正指针。Windows 的线程／fiber 栈已经使用预留地址与初始提交存储，后续按需提交页面。自定义 goroutine 运行时仍需正确集成增长和异常／探测协议。[Windows 线程栈说明](https://learn.microsoft.com/en-us/windows/win32/procthread/thread-stack-size)
+
+以下是设计取舍，不是实测加速比，也不声称是 Go 团队选择现有方案的官方理由：
+
+- 深栈反复增长时，避免复制有效字节和修正指针可能有利。不过，从初始容量单调翻倍到 `C` 时，历次旧容量之和小于 `C`，复制的有效字节不会超过这个和。此界限不包含缩小再增长、元数据处理和指针修正成本。始终不增长的小栈则没有复制成本可以消除。
+- 每个栈独占页面，可能提高小栈的 RAM 开销。如果仅需 2 KiB 的栈独占一个 4 KiB 页面，载荷占用的物理容量就是紧凑存放 2 KiB 栈的两倍；元数据和实际驻留另外计算。页大小与平台开销不同，这是条件比较，不是通用倍率。两种方案都可能产生首次触页缺页。
+- 假设一百万个栈各预留 1 MiB，总虚拟地址约为 1 TiB，不是 RAM；在 64 位目标上可能可行。但预留大小仍限制原地增长，稀疏页表、映射元数据、保护边界和 32 位地址上限需要计入。整批预留与池化可以减少映射操作，不必每创建一个 goroutine 或每次小幅增长都调用 OS。
+- commit／decommit、清零、缺页、映射和 TLB 变化都有成本。按批次增长、保留余量可以减少反复操作，积极 trim 则降低驻留或承诺存储。地址固定不保证增长延迟恒定；超过预留上限时，仍需失败、搬迁或改用其他表示。
+
+避免栈搬迁，不会取消追踪 GC 所需的栈映射。替换 Go 的增长机制时还需保留调度行为，因为栈 guard 路径同时承担抢占请求和容量检查。因此，VM 固定地址栈值得作为 64 位 MMU 运行时的可选后端，受限平台保留有界／分块方案；尚不能视为已证明普遍更快的替代品。
+
+对照实验应保持负载与并发峰值相同，分别测试从不增长的微小 goroutine、长期深栈，以及反复深浅切换的阶段。测量总时间与尾延迟、创建／销毁成本、复制字节与指针修正时间、缺页和 VM 调用、有效载荷／栈容量、RSS、平台相应的 commitment、页表内存及虚拟预留量，明确批量、池化与 trim 策略。
+
 ## 嵌入式有两种不同情况
 
 具有适当 MMU 与虚拟内存配置的嵌入式 Linux，可以使用 Linux 后端。具有相应地址转换和映射能力的 RTOS 也可以移植 VM 后端，但要逐目标核对能力。例如 Zephyr 的虚拟内存要求启用 MMU，按需分页还需要单独配置及架构、后备存储支持。基础 VM 支持不表示可以任意超配物理内存。[Zephyr 虚拟内存](https://docs.zephyrproject.org/latest/kernel/memory_management/virtual_memory.html) · [按需分页](https://docs.zephyrproject.org/latest/kernel/memory_management/demand_paging.html)
