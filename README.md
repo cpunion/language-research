@@ -1,8 +1,8 @@
-# Awesome New Programming Languages
+# Language Research
 
 English | [简体中文](README.zh-CN.md)
 
-A curated list of emerging programming languages and the ideas behind them.
+Research notes, language studies, and reproducible experiments on programming language design and implementation.
 
 We are especially interested in program correctness, memory safety and efficiency, systems programming, concurrency, and metaprogramming. Compilation speed is considered alongside Go and Zig, and execution performance alongside Rust and C. Linked research notes explore the implementation and available evidence.
 
