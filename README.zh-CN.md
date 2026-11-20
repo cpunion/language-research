@@ -44,6 +44,7 @@
 
 - [LLGo 嵌入式目标与虚拟内存能力](research/llgo-embedded-memory.zh-CN.md) — MCU 家族、ESP／RP2350 受限映射、K210 与 Cortex-A57 例外，以及无 MMU 时软件能补充什么。[English](research/llgo-embedded-memory.md)
 - [可跨平台的数据栈存储](research/portable-data-stack-storage.zh-CN.md) — 虚拟地址预留和页面归还，以及无 MMU 嵌入式的有界／分块存储方案。[复制与原地增长实验](experiments/stack-growth-2026-11-20/README.md) · [English](research/portable-data-stack-storage.md)
+- [Go 混合 goroutine 栈实验](experiments/go-hybrid-stack-2026-11-20/README.zh-CN.md) — 小栈池、迁入后原地增长，以及 macOS 和 Linux 上的真实运行时对照。[English](experiments/go-hybrid-stack-2026-11-20/README.md)
 - [Goose 式数据栈与 GC 回退路径](research/goose-hybrid-gc.zh-CN.md) — 场景覆盖与已有实测、自动选择存储、跨内存引用、回收粒度，以及性能契约的边界。[English](research/goose-hybrid-gc.md)
 - [如何处理区域内部的独立对象寿命](research/region-reclamation-designs.zh-CN.md) — 可回收容器、声明式生命周期关系、延迟删除阶段，以及安全回收与任意图自动收集的边界。[English](research/region-reclamation-designs.md)
 - [Goose 的内存模型还能推进多远？](research/beyond-goose.zh-CN.md) — 探索自动区域、可验证的删除句柄、整块转移与有界不可变共享，并明确代价和验证目标。[English](research/beyond-goose.md)

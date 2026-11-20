@@ -1,0 +1,23 @@
+//go:build !(((linux && !android) || (darwin && !ios)) && (arm64 || amd64))
+
+package runtime
+
+const vmStackCapacity = 0
+
+func allocVMStack(uintptr) stack {
+	return stack{}
+}
+
+func resizeVMStack(*g, uintptr) bool {
+	throw("unexpected VM stack resize")
+	return false
+}
+
+func freeVMStack(stack) {
+	throw("unexpected VM stack free")
+}
+
+// HybridStackMappings returns the number of active VM mappings in this prototype.
+func HybridStackMappings() int64 {
+	return 0
+}

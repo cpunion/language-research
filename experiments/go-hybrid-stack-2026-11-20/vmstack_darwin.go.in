@@ -1,0 +1,12 @@
+//go:build !ios && (arm64 || amd64)
+
+package runtime
+
+import "unsafe"
+
+func discardVMStackPages(v unsafe.Pointer, n uintptr) bool {
+	if !mapVMStackPages(v, n) {
+		throw("runtime: cannot replace unused VM stack pages")
+	}
+	return true
+}

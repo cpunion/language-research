@@ -1,0 +1,85 @@
+//go:build ((linux && !android) || (darwin && !ios)) && (arm64 || amd64)
+
+package runtime
+
+import (
+	"internal/goexperiment"
+	"internal/runtime/atomic"
+	"unsafe"
+)
+
+const (
+	vmStackThreshold = 64 << 10
+	vmStackCapacity  = 1 << 20
+)
+
+var vmStackMappings atomic.Int64
+
+func allocVMStack(size uintptr) stack {
+	if size < vmStackThreshold || size > vmStackCapacity ||
+		physPageSize > vmStackThreshold || debug.efence != 0 || stackFromSystem != 0 || stackPoisonCopy != 0 ||
+		raceenabled || msanenabled || asanenabled || valgrindenabled || goexperiment.RuntimeSecret ||
+		debug.traceallocfree.Load() != 0 {
+		return stack{}
+	}
+
+	// Keep the low page inaccessible. The rest of the reservation is writable
+	// anonymous memory. Ordinary page faults supply backing on first touch.
+	reservationSize := vmStackCapacity + physPageSize
+	base, err := mmap(nil, reservationSize, _PROT_NONE, _MAP_ANON|_MAP_PRIVATE, -1, 0)
+	if err != 0 {
+		return stack{}
+	}
+	usable := add(base, physPageSize)
+	if !mapVMStackPages(usable, vmStackCapacity) {
+		sysFreeOS(base, reservationSize)
+		return stack{}
+	}
+	// Prevent a fault well inside a large mapping from backing untouched pages.
+	sysNoHugePageOS(usable, vmStackCapacity)
+	hi := uintptr(base) + reservationSize
+	accountVMStack(int64(size))
+	vmStackMappings.Add(1)
+	return stack{lo: hi - size, hi: hi}
+}
+
+func mapVMStackPages(v unsafe.Pointer, n uintptr) bool {
+	p, err := mmap(v, n, _PROT_READ|_PROT_WRITE, _MAP_ANON|_MAP_PRIVATE|_MAP_FIXED, -1, 0)
+	return p == v && err == 0
+}
+
+// The caller owns the stack. The ordinary shrink check has established that
+// all live frames and the nosplit margin are above the remapped prefix.
+func resizeVMStack(gp *g, size uintptr) bool {
+	lo := gp.stack.hi - size
+	if lo > gp.stack.lo {
+		n := lo - gp.stack.lo
+		v := unsafe.Pointer(gp.stack.lo)
+		if !discardVMStackPages(v, n) {
+			return false
+		}
+	}
+	oldSize := gp.stack.hi - gp.stack.lo
+	gp.stack.lo = lo
+	gp.stackguard0 = lo + stackGuard
+	accountVMStack(int64(size) - int64(oldSize))
+	return true
+}
+
+func freeVMStack(s stack) {
+	reservationSize := vmStackCapacity + physPageSize
+	sysFreeOS(unsafe.Pointer(s.hi-reservationSize), reservationSize)
+	accountVMStack(-int64(s.hi - s.lo))
+	vmStackMappings.Add(-1)
+}
+
+func accountVMStack(delta int64) {
+	// Follow the runtime's logical usable-size accounting, independent of RSS.
+	memstats.stacks_sys.add(delta)
+	gcController.mappedReady.Add(delta)
+}
+
+// HybridStackMappings returns the number of active VM mappings in this prototype.
+func HybridStackMappings() int64 {
+	return vmStackMappings.Load()
+}

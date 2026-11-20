@@ -1,0 +1,11 @@
+//go:build !android && (arm64 || amd64)
+
+package runtime
+
+import "unsafe"
+
+func discardVMStackPages(v unsafe.Pointer, n uintptr) bool {
+	// Retain the mapping, including its huge-page advice. The discarded
+	// anonymous pages will be zero-filled if the goroutine grows again.
+	return madvise(v, n, _MADV_DONTNEED) == 0
+}
