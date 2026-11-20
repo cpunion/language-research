@@ -2,7 +2,7 @@
 
 English | [简体中文](portable-data-stack-storage.zh-CN.md)
 
-Research date: 2026-11-16. This is a source-based design assessment, without new runtime measurements. Goose-specific implementation details refer to `32a4f445d8a94b22874a28469f95f69ba3ac31dd`.
+Initial research date: 2026-11-16. Stack storage measurements added on 2026-11-20. Goose-specific implementation details refer to `32a4f445d8a94b22874a28469f95f69ba3ac31dd`.
 
 **Reserving addresses separately from physical backing is an established way to implement stable, growing arenas.** It is practical on Windows, Linux, and macOS. A portable language that also targets microcontrollers needs additional storage backends: hardware without address translation cannot provide the same sparse, contiguous virtual reservation through an allocator alone.
 
@@ -37,7 +37,7 @@ The following are design tradeoffs, not measured speedups or a claim about the G
 
 Avoiding stack relocation does not remove stack maps needed by tracing GC. Replacing Go's growth mechanism also needs to preserve scheduling behavior: its stack-guard path carries preemption requests as well as capacity checks. VM-backed fixed-address stacks are therefore a promising optional backend for a 64-bit MMU runtime, with bounded or segmented alternatives on constrained targets, rather than a demonstrated universally faster replacement.
 
-Compare equal workloads and peak concurrency, separating tiny never-growing goroutines, long-lived deep stacks, and repeated deep/shallow phases. Measure total execution and tail latency, creation/destruction costs, copied bytes and pointer-fixup time, faults and VM calls, payload/stack capacity, RSS, commitment where applicable, page-table memory, and reserved virtual space. Keep batching, pooling, and trimming policies explicit.
+The [storage experiment](../experiments/stack-growth-2026-11-20/README.md) compared a pooled 2 KiB copy baseline, explicit page protection, and lazy anonymous mapping on Arm64 macOS and Linux. Lazy mapping reduced median time for one fill from 8.37 to 7.58 ms on macOS and from 11.62 to 8.75 ms on Linux. Dense packing beat both VM variants for 16,384 shallow stacks. Linux's 4 KiB base pages still backed the default sparse mapping in 16 KiB units on the tested kernel. Disabling transparent huge pages on that mapping reduced sampled RSS from 257.8 to 65.8 MiB. Trimming each wave reduced final RSS and made both VM variants slower than retaining capacity. These results concern synthetic stack frames, with no modified Go runtime or Windows measurement.
 
 ## Embedded targets have two different cases
 
